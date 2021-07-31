@@ -1,6 +1,6 @@
-import React from 'react';
 import { Layout, Menu } from 'antd';
 import { useHistory } from 'react-router';
+import { MenuInfo } from 'rc-menu/lib/interface';
 
 import {
     DashboardOutlined,
@@ -9,6 +9,7 @@ import {
     SettingOutlined,
     TeamOutlined,
 } from '@ant-design/icons';
+import TagTypeahead from './TagTypeahead';
 
 const { Sider } = Layout;
 const { SubMenu } = Menu;
@@ -32,6 +33,21 @@ const SideMenu = (props: Props) => {
 
     const history = useHistory();
 
+
+    const onMenuSelect = (info: MenuInfo) => {
+        switch (info.key) {
+            case 'dashboard':
+                history.push('/');
+                break;
+            case 'tags':
+                history.push('/tags');
+                break;
+            default:
+                history.push('/');
+                break;
+        }
+    }
+
     return (
         <Sider
             width="256"
@@ -42,14 +58,17 @@ const SideMenu = (props: Props) => {
             <a>
                 <div className="menu-logo"></div>
             </a>
-            <Menu mode="inline">
+            <TagTypeahead />
+            <Menu mode="inline" onClick={onMenuSelect}>
                 <Menu.Item key="dashboard">
                     <DashboardOutlined />
                     <span className="nav-text">Dashboard</span>
                 </Menu.Item>
 
-                <SubMenu key="tags" title={partitionAndTitle("Tags")}>
-
+                <SubMenu key="tag-menu" title={partitionAndTitle("Tags")}>
+                    <Menu.Item key="tags">
+                        <span className="nav-text">All tags</span>
+                    </Menu.Item>
                 </SubMenu>
 
                 <Menu.Item key="settings">

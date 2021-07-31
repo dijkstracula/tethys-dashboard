@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Layout } from 'antd';
-import Routes from '../Routes'
+import RoutingList from '../RoutingList'
 import SideMenu from './SideMenu';
 import Banner from './Banner';
-import Footer from './Footer';
 
 const { Content } = Layout;
 
@@ -19,10 +18,11 @@ const MainLayout = () => {
             <SideMenu collapsed={collapsed} onChangeCollapsed={onChangeCollapsed} />
             <Layout>
                 <Banner collapsed={collapsed} onChangeCollapsed={onChangeCollapsed} />
-                <Content>
-                    {Routes}
+                <Content style={{ margin: '24px 16px 0' }}>
+                    <div style={{ padding: 24, background: '#fff', minHeight: 20 }}>
+                        <RoutingList />
+                    </div>
                 </Content>
-                <Footer />
             </Layout>
         </Layout>
     )

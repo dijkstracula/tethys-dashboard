@@ -1,15 +1,11 @@
 import React from 'react';
-import { Layout, Menu } from 'antd';
+import { Badge, Layout, Menu } from 'antd';
 import {
     MenuUnfoldOutlined,
     MenuFoldOutlined,
-    QuestionCircleOutlined,
-    GlobalOutlined,
-    BellOutlined,
-    UserOutlined,
-    LogoutOutlined,
 } from '@ant-design/icons';
 
+const { SubMenu } = Menu;
 const { Header } = Layout;
 
 interface Props {
@@ -27,7 +23,7 @@ function getCollapsedIcon(props: Props) {
 
 const Banner = (props: Props) => (
     <Header className="banner">
-        <div className="banner">
+        <div>
             {getCollapsedIcon(props)}
         </div>
     </Header>
