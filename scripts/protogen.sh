@@ -6,12 +6,19 @@
 # author: taylorn5
 set -e
 
-DASHBOARD_ROOT="$(dirname $BASH_SOURCE)/.."
+normalise() {
+    python -c "import os,sys; print(os.path.abspath(sys.argv[1]))" $1
+}
+
+DASHBOARD_ROOT="$(normalise $(dirname $BASH_SOURCE)/..)"
+
 PROTOC_GEN_TS_PATH="$DASHBOARD_ROOT/node_modules/.bin/protoc-gen-ts"
 
 # Overridable parameters:
 TETHYS_BRIDGE_PATH=${TETHYS_BRIDGE_PATH:-"$DASHBOARD_ROOT/../tethys-plc-bridge"}
+TETHYS_BRIDGE_PATH="$(normalise ${TETHYS_BRIDGE_PATH})"
 TETHYS_PROTO_NAME=${TETHYS_PROTO_NAME:-drayton-plant.proto}
+
 
 ###########################################################
 
@@ -48,8 +55,12 @@ fi
 OUTDIR="$DASHBOARD_ROOT/src/proto/"
 if [[ ! -d $OUTDIR ]]
 then
+    echo "- Creating Proto storage directory at ${OUTDIR}..."
     mkdir -p $OUTDIR
 fi
+
+PROTO_FILE="${PROTO_PATH}/${TETHYS_PROTO_NAME}"
+echo "- Generating TypeScript Proto definitions from ${PROTOC_GEN_TS_PATH} -> ${PROTO_FILE} ..."
 
 protoc \
     --plugin="protoc-gen-ts=${PROTOC_GEN_TS_PATH}" \
@@ -57,3 +68,9 @@ protoc \
     --ts_out="service=grpc-web:${OUTDIR}" \
     --proto_path="$PROTO_PATH" \
     $TETHYS_PROTO_NAME
+
+OUTDIR="$DASHBOARD_ROOT/src/"
+echo "- Generating JSON tag list from ${PROTO_FILE} -> ${OUTDIR}"
+./scripts/taggen/bin/run ${PROTO_FILE} ${OUTDIR} 
+
+echo "- All done!"
