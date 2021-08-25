@@ -5,6 +5,12 @@
   "bin": {
     "taggen": "./bin/run"
   },
+  "compilerOptions": {
+    "target": "es5",
+    "lib": [
+      "es2019"
+    ]
+  },
   "bugs": "https://github.com/dijkstracula/taggen/issues",
   "dependencies": {
     "@oclif/command": "^1",

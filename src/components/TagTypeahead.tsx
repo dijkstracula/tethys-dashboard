@@ -1,16 +1,16 @@
-import React, { useState } from 'react';
-import ReactDOM from 'react-dom';
+import { useState } from 'react';
 import 'antd/dist/antd.css';
-
-import { DataSourceItemType } from 'antd/lib/auto-complete';
-import Option from 'antd/lib/auto-complete';
 import tags from '../tags.json';
-
+import { SelectProps } from 'antd/es/select';
 import {
     Button, Input, AutoComplete,
 } from 'antd';
+import { SearchOutlined, PlusOutlined } from '@ant-design/icons'
+import Tag from '../Tag'
 
-import { SearchOutlined } from '@ant-design/icons'
+interface Props {
+    onSelect: (s: string) => void
+}
 
 function filterBy(target: string): any[] {
     /* Don't overwhelm the typeahead box for a short search. */
@@ -20,20 +20,31 @@ function filterBy(target: string): any[] {
     console.log(target)
     /* XXX: Clearly, smarter things to do here than a linear probe */
     return tags
-        .filter((s) => s.includes(target))
-        .map((s) => { return { value: s } })
+        .filter((s) => s.name.includes(target))
+        .filter((s) => s.type === "numeric" || s.type === "bool")
+        .map((s) => { return { value: s.name } }) /* XXX */
 }
 
-function renderItem(s: string) {
+function renderItem(t: Tag) {
     return (
-        <Option key={s}>
-            <a href={`https://todo/search?q=${s}`}> {s} </a>
-        </Option>)
+        <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+        }}>
+            <span>
+                {t.name}
+            </span>
+            <span>
+                <Button className="add-btn" size="small" type="primary">
+                    <PlusOutlined />
+                </Button>
+            </span>
+        </div>)
 }
 
-const TagTypeahead = () => {
-    const [value, setValue] = useState('');
-    const [options, setOptions] = useState<{ value: string }[]>([]);
+const TagTypeahead = (props: Props) => {
+    const [, setValue] = useState('');
+    const [options, setOptions] = useState<SelectProps<object>['options']>([]); //useState<{ value: string, label: JSX.Element }[]>([]);
 
     const onChange = (searchText: string) => {
         setValue(searchText);
@@ -43,10 +54,6 @@ const TagTypeahead = () => {
         setOptions(filterBy(searchText));
     };
 
-    const onSelect = (data: string) => {
-        console.log('onSelect', data);
-    };
-
     return (
         <div className="tag-search-wrapper">
             <AutoComplete
@@ -54,7 +61,7 @@ const TagTypeahead = () => {
                 options={options}
                 style={{ width: '100%' }}
                 onChange={onChange}
-                onSelect={onSelect}
+                onSelect={props.onSelect}
                 onSearch={onSearch}
                 placeholder="Tag search"
             >

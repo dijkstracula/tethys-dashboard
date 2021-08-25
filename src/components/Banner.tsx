@@ -1,11 +1,9 @@
-import React from 'react';
-import { Badge, Layout, Menu } from 'antd';
+import { Layout } from 'antd';
 import {
     MenuUnfoldOutlined,
     MenuFoldOutlined,
 } from '@ant-design/icons';
 
-const { SubMenu } = Menu;
 const { Header } = Layout;
 
 interface Props {

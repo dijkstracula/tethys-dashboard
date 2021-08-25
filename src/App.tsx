@@ -1,5 +1,4 @@
 import React, { FC } from 'react';
-import { hot } from 'react-hot-loader/root';
 import { BrowserRouter, Switch } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import MainLayout from './components/MainLayout'

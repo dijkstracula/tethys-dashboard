@@ -7,10 +7,9 @@
 .banner {
     background-color: #fff;
     padding: 0;
-    float: 'left';
     width: '100%';
     align-self: 'center';
-    display: 'flex';
+    display: flex;
 }
 
 .trigger {

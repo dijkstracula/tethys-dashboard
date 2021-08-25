@@ -1,28 +1,47 @@
 import tags from '../tags.json';
+import { Table } from 'antd';
 
-/* TODO: this should be richer data, but for now, just use the typeahead file. */
-function toTagLine(blob: any) {
-    console.log(JSON.stringify(blob, undefined, 2))
-    return (
-        <tr>
-            <td>{blob}</td>
-            <td></td>
-            <td></td>
-        </tr>
-    )
-}
+/* TODO: doing somethign interesting with the tag column might be good, but
+ * just print it out for the moment. */
+export const columns = [
+    {
+        title: 'Name',
+        dataIndex: 'name',
+        key: 'name',
+        render: (text: string) => <a href="#top">{text}</a>,
+    },
+    {
+        title: 'Description',
+        dataIndex: 'comment',
+        key: 'comment',
+    },
+    {
+        title: 'Type',
+        key: 'type',
+        dataIndex: 'type',
+    }
+];
+
+
+const DEFAULT_PAGE_SIZE = 15;
 
 const TagTable = () => {
-    return (<div>
-        <table>
-            <tr>
-                <th>Name</th>
-                <th>Comment</th>
-                <th>Type</th>
-            </tr>
-            {tags.map(toTagLine)}
-        </table>
-    </div>);
+    const table = (
+        <Table
+            dataSource={tags}
+            columns={columns}
+            rowKey={(t) => t.name}
+            pagination={{
+                pageSize: DEFAULT_PAGE_SIZE,
+                total: tags.length,
+                showTotal: (total, range) => {
+                    return `${range[0]}-${range[1]} of ${total} tags`;
+                },
+            }}
+        />
+    )
+
+    return table
 }
 
 export default TagTable;

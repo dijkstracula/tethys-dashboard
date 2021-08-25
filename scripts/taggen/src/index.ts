@@ -2,6 +2,7 @@ import {Command, flags} from '@oclif/command'
 import { assert, exception } from 'console';
 import * as fs from 'fs';
 import * as t from 'proto-parser';
+import { __classPrivateFieldSet } from 'tslib';
 
 
 enum SimpleType {
@@ -34,8 +35,10 @@ function toSimpleType(s: string): SimpleType {
   }
 }
 
+/* XXX: This is needed by the visualiser too, so it's exposed.  Is this
+ * the best place to define it? */
 interface Tag {
-  name: string[], /* The fully-qualified tag name, tokenised */
+  name: string, /* The fully-qualified tag name. */
   comment?: string,
   type: Type
 }
@@ -52,70 +55,101 @@ type ReferenceType = string
  * an array type
  * a reference to a predefined type
  * or a structured type with one or more fields. */
-type Kind = SimpleType | ArrayType | ReferenceType | Tag[]
-interface Type {
-  typeName: string,
-  kind: Kind
-}
+type Type = SimpleType | ArrayType | ReferenceType | Tag[]
 
 function handleTagType(rawTag: any): Type {
-  let kind: Kind;
-
   /* Compound type: check for the presence of fields, in which case the kind of
    * this type is a sequence of Tag fields. */
   if (rawTag.fields !== undefined) {
     const fieldNames = Object.entries(rawTag.fields)
-    kind = fieldNames.map(([k, v], _) => {
+    return fieldNames.map(([name, v], _) => {
       const field = (v as any);
       return {
-        "name": field.fullName.split(".").slice(2),
-        "comment": (field.comment || field.options?.["(types.comment)"] || "") as string,
+        "name": name,
+        "comment": (field.comment || field.options?.["(types.comment)"] || undefined) as string | undefined,
         "type": handleTagType(v)
       } as Tag
     })
   } else if (rawTag.type.syntaxType === "BaseType") {
     /* A simple primitive type. */
-    kind = toSimpleType(rawTag.type.value)
+    return toSimpleType(rawTag.type.value)
   } else if (rawTag.type.syntaxType === "Identifier") {
     /* reference type */
-    kind = rawTag.type.value as string
-  } else {
-    throw new Error(`Can't figure out type for ${rawTag}`)
+    return rawTag.type.value as string
   }
-  return {
-    "typeName": rawTag.name,
-    "kind": kind
-  }
+  throw new Error(`Can't figure out type for ${rawTag}`)
 }
 
 
 /* Given a raw tag object, coerse the object to a well-typed, simplified one. */
 function handleTag(rawTag: any): Tag {
-  let name = rawTag.fullName as string | undefined;
+  let name = rawTag.name as string | undefined;
   if (!name) {
-    throw new Error(`Misisng full name in ${rawTag}`)
+    throw new Error(`Missing full name in ${rawTag}`)
   }
 
-  let typeName = rawTag.name as string | undefined;
-  if (!typeName) {
-    throw new Error(`Missing name in ${rawTag}`)
-  }
-
-  let comment = rawTag.comment as string || rawTag.options?.["(types.comment)"] || ""
+  let comment = rawTag.comment as string || rawTag.options?.["(types.comment)"] || undefined
   
   /* If there is a "type" field in the object, then it's a primitive
    * type of some sort.  Only one type need be returned. */
     return {
-      "name": name.split(".").slice(2),
+      "name": name,
       "comment": comment,
       "type": handleTagType(rawTag)
   }
 
 }
 
-/* Tags at the root of the tag tree.  Includes things like "ZW", "SYSTEM", and
- * "COM_AQUA_DATA_1". */
-function extractTypes(protoDocument: t.ProtoDocument): Map<String, any> {
+/* Given a tag structure, emit in an array all the subtags of that tag.  Recurse
+ * on any fields, terminating when we hit a primitive type of any sort.
+ * Additonally, only refer to the name of the type, essentially turning
+ * non-reference types into reference types.*/
+function flattenTags(tag: Tag, tagTypes: Map<string, Tag>): Tag[] {
+  if (Array.isArray(tag.type)) {
+    /* Compound types: recurse on all the subtypes.  My kingdom for flatMap(). */
+    let subtags: Tag[] = [];
+
+    tag.type.forEach((type => {
+      flattenTags(type, tagTypes).forEach((subtag) => {
+        subtags.push({
+          name: tag.name + "." + subtag.name,
+          comment: type.comment,
+          type: type.type
+        });
+      });
+    }));
+
+    return subtags;
+
+  } else if (["string", "bool", "numeric"].includes(tag.type as SimpleType)) {
+    /* Simple type */
+    return [tag]
+  } else {
+    /* reference type */
+    const type = tag.type as string;
+    const refTag = tagTypes.get(type);
+    if (refTag === undefined) {
+      console.warn(`What even is a ${type}???`)
+    } else {
+      /* XXX: an annoying hack: when we walk the proto file, the Messages that
+       * correspond to structure definitions have the _type_ as their "name".
+       * Makes sense since it's a message definition, until we try to resolve an
+       * _instance_ of that _type_.  In that case, the "name" field should refer
+       * to the name of the tag that contains it. */
+      refTag.name = tag.name;
+      return flattenTags(refTag, tagTypes);
+    }
+  }
+  /* TODO: ArrayType needs some thinking through since it's just an interface type. 
+   * We don't have a visualization system for entire arrays anyways, though.  But,
+   * maybe we just emit SomeTag[0], SomeTag[1], ... SomeTag[255]??? */
+  return []
+}
+
+
+/* Tag definitions at the root of the tag tree.  Includes things like "ZW",
+ * "SYSTEM", and "COM_AQUA_DATA_1". */
+function extractMessageTypes(protoDocument: t.ProtoDocument): Map<string, any> {
   let root = protoDocument.root.nested
   if (root === undefined) {
     throw new Error("Error getting the document root")
@@ -130,12 +164,16 @@ function extractTypes(protoDocument: t.ProtoDocument): Map<String, any> {
 
   return Object.entries(types)
     .filter(([_, value]) => value.syntaxType === "MessageDefinition")
-    .reduce((map, [key, value]) => {
-      map.set(key, value)
+    .reduce((map, [name, tag]) => {
+      map.set(name, handleTag(tag))
+     // console.log(JSON.stringify(tag, undefined, 2))
+      //console.log(JSON.stringify(handleTag(tag), undefined, 2))
       return map;
-    }, new Map<String, any>())
+    }, new Map<string, any>())
 }
 
+
+/* XXX: This might be redundant, as we can extract the fields from Value directly. */
 function extractRoots(protoDocument: t.ProtoDocument): string[] {
   let root = protoDocument.root.nested
   if (root === undefined) {
@@ -156,6 +194,7 @@ function extractRoots(protoDocument: t.ProtoDocument): string[] {
   return values;
 }
 
+
 class Taggen extends Command {
   static description = 'Generates fully-qualified tags from a proto file.'
 
@@ -164,10 +203,16 @@ class Taggen extends Command {
     help: flags.help({char: 'h'}),
   }
 
-  static args = [{
+  static args = [
+  {
     name: 'file',
     required: true,
     description: 'The proto file to parse'
+  },
+  {
+    name: 'outpath',
+    required: true,
+    description: 'The location to place the output JSON blobs'
   }]
 
   async run() {
@@ -176,15 +221,26 @@ class Taggen extends Command {
     const content = fs.readFileSync(args.file, 'utf-8');
     const protoDocument = t.parse(content) as t.ProtoDocument;
 
-    const types = extractTypes(protoDocument);
-    const rootTags = extractRoots(protoDocument);
+    /* The protobuf definition file describes all message types that can be sent
+     * over the wire.  In terms of the values of interest, the "Value"
+     * message is the only one of interest; however, there are Message
+     * definitions for compound types like TIMER, which we need to expand the fields
+     * of a TIMER value. */
+    const msgTypes: Map<string, Tag> = extractMessageTypes(protoDocument);
 
-    let acc: Tag[] = []
-    types.forEach((root) => {
-      acc = acc.concat(handleTag(root))
-    });
+    /* The tag roots are defined by the fields in the "Value" message structure.
+     * These are all the fields that, as far as users of the PLC are concerned, 
+     * can be sent over the wire. */
+    //const tagRoot = extractRoots(protoDocument);
+    const tagRoot = msgTypes.get("Value")?.["type"] as Tag[]
 
-    console.log(JSON.stringify(acc, undefined, 2));
+
+    /* Write out all the possible subtags.  This is used for typeahead. */
+    const allSubtags = tagRoot.map((root) => {
+      return flattenTags(root, msgTypes)
+    }).reduce((acc, val) => acc.concat(val), []);
+    fs.writeFileSync(args.outpath + "/tags.json", JSON.stringify(allSubtags, undefined, 2) + "\n")
+
   }
 }
 

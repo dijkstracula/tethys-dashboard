@@ -4,10 +4,8 @@ import { MenuInfo } from 'rc-menu/lib/interface';
 
 import {
     DashboardOutlined,
-    FundProjectionScreenOutlined,
     PartitionOutlined,
     SettingOutlined,
-    TeamOutlined,
 } from '@ant-design/icons';
 import TagTypeahead from './TagTypeahead';
 
@@ -55,10 +53,9 @@ const SideMenu = (props: Props) => {
             onCollapse={props.onChangeCollapsed}
             collapsed={props.collapsed}
         >
-            <a>
+            <a href="#top">
                 <div className="menu-logo"></div>
             </a>
-            <TagTypeahead />
             <Menu mode="inline" onClick={onMenuSelect}>
                 <Menu.Item key="dashboard">
                     <DashboardOutlined />
